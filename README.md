@@ -5,8 +5,8 @@
 ## Список лабораторный работ
 
 - [Лабораторная работа №1](https://github.com/KorabliovKirill/Modern-Problems-of-Artificial-Intelligence/tree/main/Lab_1)
-- [Лабораторная работа №2](https://github.com/KorabliovKirill/Modern-Problems-of-Artificial-Intelligence/tree/Lab_2/Lab_2)
-- [Лабораторная работа №3]()
+- [Лабораторная работа №2](https://github.com/KorabliovKirill/Modern-Problems-of-Artificial-Intelligence/tree/main/Lab_2)
+- [Лабораторная работа №3](https://github.com/KorabliovKirill/Modern-Problems-of-Artificial-Intelligence/tree/main/Lab_3)
 - [Лабораторная работа №4]()
 - [Лабораторная работа №5]()
 - [Лабораторная работа №6]()
