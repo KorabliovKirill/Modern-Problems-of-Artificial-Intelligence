@@ -1,3 +1,4 @@
+# config.py
 import os
 
 # Путь к файлу базы знаний
@@ -16,19 +17,19 @@ WORK_FORMATS = [
     "удалённый", "очно", "гибридный"
 ]
 
-# Соответствие названий столбцов в CSV
+# Соответствие названий столбцов в CSV - ДОБАВИМ ТОЧНЫЕ НАЗВАНИЯ КОЛОНОК
 COLUMN_ALIASES = {
-    "name": {"имя", "name", "кандидат"},
-    "language": {"язык", "язык программирования", "language"},
-    "level": {"уровень", "уровень опыта", "level", "опыт"},
-    "years": {"опыт работы", "years", "years_of_experience", "стаж"},
-    "format": {"формат", "формат работы", "work_format"},
-    "salary": {"зарплата", "ожидаемая зарплата", "salary"},
+    "name": {"name", "имя", "name", "кандидат", "candidate"},
+    "language": {"language", "язык", "язык программирования", "language", "programming language", "skills"},
+    "level": {"level", "уровень", "уровень опыта", "level", "опыт", "experience level"},
+    "years": {"years", "опыт работы", "years", "years_of_experience", "стаж", "experience", "опыт"},
+    "format": {"format", "формат", "формат работы", "work_format", "work format", "формат"},
+    "salary": {"salary", "зарплата", "ожидаемая зарплата", "salary", "expected salary"},
 }
 
 # Возможные флаги командной строки
 FLAGS = {
     "relaxed": "--relaxed",
-    "all": "--all",
+    "all": "--all", 
     "why": "--why",
 }
