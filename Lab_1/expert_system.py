@@ -1,165 +1,130 @@
+# expert_system.py
 from typing import List, Dict, Any, Tuple
-from config import FLAGS, LANGUAGES, EXPERIENCE_LEVELS, WORK_FORMATS
 from candidate_manager import Candidate
 
 
-def get_user_profile() -> Dict[str, Any]:
-    """Собирает профиль пользователя через интерактивный опрос."""
-    print("\n--- Профиль вакансии ---")
-    print("Для пропуска критерия введите '0'. Можно выбрать несколько: 1,3,5")
-
-    # Язык программирования
-    print("\nВыберите требуемый(ые) язык(и) программирования:")
-    for i, lang in enumerate(LANGUAGES, 1):
-        print(f"{i}) {lang}")
-    print("0) Пропустить")
-    lang_input = input("> ").strip() # Добавлен пробел после >
-    selected_langs = []
-    if lang_input != "0":
-        indices = [int(x.strip()) - 1 for x in lang_input.split(",") if x.strip().isdigit()]
-        selected_langs = [LANGUAGES[i] for i in indices if 0 <= i < len(LANGUAGES)]
-
-    # Уровень опыта
-    print("\nВыберите требуемый уровень опыта:")
-    for i, level in enumerate(EXPERIENCE_LEVELS, 1):
-        print(f"{i}) {level}")
-    print("0) Пропустить")
-    level_input = input("> ").strip() # Добавлен пробел после >
-    selected_level = ""
-    if level_input != "0" and level_input.isdigit():
-        idx = int(level_input) - 1
-        if 0 <= idx < len(EXPERIENCE_LEVELS):
-            # Сохраняем уровень в нижнем регистре
-            selected_level = EXPERIENCE_LEVELS[idx].lower()
-
-    # Опыт работы (диапазон)
-    print("\nВведите минимальный и максимальный опыт работы в годах (например, 2 5).")
-    print("Если не важно, нажмите Enter.")
-    years_input = input("> ").strip() # Добавлен пробел после >
-    min_years, max_years = 0, float('inf')
-    if years_input:
-        parts = years_input.split()
-        if len(parts) >= 2:
-            try:
-                min_years, max_years = int(parts[0]), int(parts[1])
-            except ValueError:
-                pass # Используем значения по умолчанию
-        elif len(parts) == 1:
-             try:
-                 min_years = int(parts[0])
-                 # Если ввели одно число, считаем его как минимум, максимум неограничен
-                 max_years = float('inf')
-             except ValueError:
-                 pass # Используем значения по умолчанию
+# ---------------------------------------------------------------------------
+# БАЙЕСОВСКАЯ ЛОГИКА
+# ---------------------------------------------------------------------------
 
 
-    # Формат работы
-    print("\nВыберите требуемый формат работы:")
-    for i, fmt in enumerate(WORK_FORMATS, 1):
-        print(f"{i}) {fmt}")
-    print("0) Пропустить")
-    fmt_input = input("> ").strip() # Добавлен пробел после >
-    selected_fmts = []
-    if fmt_input != "0":
-        indices = [int(x.strip()) - 1 for x in fmt_input.split(",") if x.strip().isdigit()]
-        selected_fmts = [WORK_FORMATS[i] for i in indices if 0 <= i < len(WORK_FORMATS)]
+def bayesian_score(c: Candidate, profile: Dict[str, Any]) -> float:
+    """Вычисляет баесовскую вероятность соответствия кандидата профилю."""
+    p = 1.0
 
-    # Зарплата (диапазон)
-    print("\nВведите минимальную и максимальную ожидаемую зарплату (например, 30000 50000).")
-    print("Если не важно, нажмите Enter.")
-    salary_input = input("> ").strip() # Добавлен пробел после >
-    min_salary, max_salary = 0, float('inf')
-    if salary_input:
-        parts = salary_input.split()
-        if len(parts) >= 2:
-            try:
-                min_salary, max_salary = int(parts[0]), int(parts[1])
-            except ValueError:
-                pass # Используем значения по умолчанию
-        elif len(parts) == 1:
-             try:
-                 min_salary = int(parts[0])
-                 # Если ввели одно число, считаем его как минимум, максимум неограничен
-                 max_salary = float('inf')
-             except ValueError:
-                 pass # Используем значения по умолчанию
+    # Язык
+    if profile["languages"]:
+        match = any(
+            lang.lower() in [l.lower() for l in c.language]
+            for lang in profile["languages"]
+        )
+        p *= 0.9 if match else 0.5
 
-    return {
-        "languages": selected_langs,
-        "level": selected_level,
-        "years_range": (min_years, max_years),
-        "formats": selected_fmts,
-        "salary_range": (min_salary, max_salary),
-    }
+    # Уровень
+    if profile["level"]:
+        p *= 0.8 if c.level.lower() == profile["level"].lower() else 0.6
 
-def has_match(item_list: List[str], prefs: List[str], relaxed: bool) -> bool:
-    """Проверяет, есть ли совпадение между списком у кандидата и предпочтениями."""
-    if not prefs:
-        return True
-    if relaxed:
-        for p in prefs:
-            for x in item_list:
-                if p.lower() in x.lower():
-                    return True
-        return False
-    return bool(set(prefs) & set(item_list))
-
-def contains_all(item_list: List[str], prefs: List[str], relaxed: bool) -> bool:
-    """Проверяет, содержит ли список кандидата ВСЕ выбранные пользователем значения."""
-    if not prefs:
-        return True
-    if relaxed:
-        for p in prefs:
-            found = False
-            for x in item_list:
-                if p.lower() in x.lower():
-                    found = True
-                    break
-            if not found:
-                return False
-        return True
-    return set(prefs).issubset(set(item_list))
-
-def check_pref(item_list: List[str], prefs: List[str], relaxed: bool, require_all: bool) -> bool:
-    """Универсальная проверка списка атрибутов (язык, формат)."""
-    if require_all:
-        return contains_all(item_list, prefs, relaxed)
+    # Опыт
+    min_y, max_y = profile["years_range"]
+    if min_y <= c.years <= max_y:
+        p *= 0.9
+    elif abs(c.years - min_y) <= 2 or abs(c.years - max_y) <= 2:
+        p *= 0.7
     else:
-        return has_match(item_list, prefs, relaxed)
+        p *= 0.5
 
-def recommend(candidates: List[Candidate], profile: Dict[str, Any], flags: Dict[str, bool]):
-    """Фильтрует и возвращает список подходящих кандидатов."""
-    results = []
-    debug_info = []
+    # Формат
+    if profile["formats"]:
+        match = any(
+            fmt.lower() in [f.lower() for f in c.format] for fmt in profile["formats"]
+        )
+        p *= 0.8 if match else 0.6
 
-    for c in candidates:
-        reasons = []
-
-        # 1. Проверка языка
-        if not check_pref(c.language, profile["languages"], flags["relaxed"], flags["all"]):
-            reasons.append("язык не совпал")
-        # 2. Проверка уровня
-        if profile["level"] and profile["level"] != c.level.lower():
-            reasons.append("уровень не совпал")
-        # 3. Проверка лет опыта
-        if not (profile["years_range"][0] <= c.years <= profile["years_range"][1]):
-            reasons.append(f"опыт {c.years} лет не подходит под [{profile['years_range'][0]}, {profile['years_range'][1]}]")
-        # 4. Проверка формата
-        if not check_pref(c.format, profile["formats"], flags["relaxed"], flags["all"]):
-            reasons.append("формат не совпал")
-        # 5. Проверка зарплаты
-        if not (profile["salary_range"][0] <= c.salary <= profile["salary_range"][1]):
-            reasons.append(f"зарплата {c.salary} не подходит под [{profile['salary_range'][0]}, {profile['salary_range'][1]}]")
-
-        if reasons:
-            if flags["why"]:
-                debug_info.append((c.name, reasons))
+    # Зарплата
+    min_s, max_s = profile["salary_range"]
+    if min_s <= c.salary <= max_s:
+        p *= 0.9
+    else:
+        if max_s == float("inf"):
+            diff_factor = 0.7 if c.salary >= min_s else 0.4
         else:
-            results.append(c)
+            diff = abs(c.salary - min_s if c.salary < min_s else c.salary - max_s)
+            diff_factor = 0.7 if diff / max_s < 0.2 else 0.4
+        p *= diff_factor
 
-    if flags["why"] and debug_info:
-        print("\n[Диагностика] Причины отсева:")
-        for name, reasons in debug_info:
-            print(f"  - {name}: {', '.join(reasons)}")
+    return p
 
+
+def bayesian_recommend(candidates: List[Candidate], profile: Dict[str, Any], threshold: float = 0.3) -> List[Tuple[Candidate, float]]:
+    """Рекомендация кандидатов на основе Баесовского подхода.
+    
+    Возвращает список кортежей (Candidate, вероятность) только для кандидатов,
+    которые прошли порог threshold.
+    """
+    scored = [(c, bayesian_score(c, profile)) for c in candidates]
+
+    # Нормализация (чтобы лучший был = 1.0)
+    max_prob = max((p for _, p in scored), default=1e-6)
+    scored = [(c, p / max_prob) for c, p in scored]
+
+    # Сортировка по убыванию вероятности
+    scored.sort(key=lambda x: x[1], reverse=True)
+
+    # Возвращаем только тех, кто набрал >= threshold
+    return [(c, p) for c, p in scored if p >= threshold]
+
+
+# ---------------------------------------------------------------------------
+# КЛАССИЧЕСКАЯ ЛОГИКА
+# ---------------------------------------------------------------------------
+
+
+def check_pref(
+    item_list: List[str], prefs: List[str], relaxed: bool, require_all: bool
+) -> bool:
+    if not prefs:
+        return True
+    if require_all:
+        return set(prefs).issubset(set(item_list))
+    else:
+        return bool(set(prefs) & set(item_list))
+
+
+def classic_recommend(
+    candidates: List[Candidate], profile: Dict[str, Any], flags: Dict[str, bool]
+):
+    results = []
+    for c in candidates:
+        if not check_pref(
+            c.language, profile["languages"], flags["relaxed"], flags["all"]
+        ):
+            continue
+        if profile["level"] and profile["level"] != c.level.lower():
+            continue
+        if not (profile["years_range"][0] <= c.years <= profile["years_range"][1]):
+            continue
+        if not check_pref(c.format, profile["formats"], flags["relaxed"], flags["all"]):
+            continue
+        if not (profile["salary_range"][0] <= c.salary <= profile["salary_range"][1]):
+            continue
+        results.append(c)
     return results
+
+
+# ---------------------------------------------------------------------------
+# ОБЩАЯ ТОЧКА ВХОДА
+# ---------------------------------------------------------------------------
+
+
+def recommend(
+    candidates: List[Candidate], profile: Dict[str, Any], flags: Dict[str, bool]
+):
+    """Выбор режима подбора — классический или Баесовский.
+    
+    Для байесовского режима возвращает список кортежей (Candidate, вероятность).
+    Для классического режима возвращает список Candidate.
+    """
+    if flags.get("bayes"):
+        return bayesian_recommend(candidates, profile, threshold=0.3)
+    else:
+        return classic_recommend(candidates, profile, flags)
